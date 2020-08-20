@@ -30,6 +30,7 @@
         sendEvent('invoke', { name, args, id });
         return new Promise((res) => r[id] = res);
     }
+    this.fire = (event, data) => invoke({ type: 'fire', args: { e: event, v: data } })
     this.Util = new (class Util {
         unwrap({ status, result }) {
             if (status) return result;

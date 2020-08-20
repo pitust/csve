@@ -54,6 +54,7 @@ this.invoke = ({ name, args }) => {
         old = evs.length;
     }, 500);
     Core.gxpose('pshcsv', (a) => { fire('csvrenderrequest', a) });
+    Core.gxpose('fire', ({ e, v }) => { fire(e, v) });
     Core.gxpose('vfs/read', (file) => {
         try {
             return { status: true, result: BaseVFS.read(file) };

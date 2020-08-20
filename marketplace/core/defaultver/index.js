@@ -42,7 +42,7 @@ try {
             if (lid < 2) type = 'String';
             if (type == 'Inline') { type = e.split('|')[0]; e = e.split('|').slice(1).join('|'); }
             if (type == 'String')
-                return `<td><div><pre contenteditable="${navigator.product == 'Gecko' ? 'contenteditable="plaintext-only"': 'plaintext-only'}" oninput="ccell(this, ${lid}, ${i})">${e}</pre></div></td>`;
+                return `<td><div><input type="text" oninput="fire('push-change', [this.value, ${lid}, ${i}])" value=${JSON.stringify(e)}/></div></td>`;
             if (type == 'ROString')
                 return `<td><div><pre>${e}</pre></div></td>`;
             if (type == 'Boolean')
@@ -57,7 +57,9 @@ try {
     function e2eall(lines, meta) {
         
     }
+    let csvcur;
     handle('csvrenderrequest', ({ csv, cfg, selector }) => {
+        csvcur = csv;
         try {
             let csvs = csv.split('\n');
             let tinfo = hline(csvs[1], 'for-tinfo');
@@ -66,7 +68,25 @@ try {
         } catch(e) {
             console.log(e);
         }
-    })  
+    })
+    handle('request-code', ({ to }) => {
+        try {
+            fire(to, csvcur);
+        } catch(e) {
+            console.log(e);
+        }
+    })
+    handle('push-change', ([text, x, y]) => {
+        try {
+            let splt = csvcur.split('\n');
+            let lp = hline(splt[x], 'for-mod');
+            lp[y] = text;
+            splt[y] = lp.map(e => `${JSON.stringify(e).replace(/\\\\/g, '\\')}`).join(',');
+            csvcur = split.join('\n');
+        } catch(e) {
+            console.log(e);
+        }
+    })
 } catch(e) {
     log(e);
 }

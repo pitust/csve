@@ -55,8 +55,8 @@ Loading, please wait...<br/>
                     propromptEL(keyid == 'Enter' ? '\n' : (keyid == 'Backspace' ? '\b' : ev.key));
                     map.delete(ev.code);
                     ev.preventDefault();
-                }
-            }
+                } else if (window.fire) window.fire('onllkey', keyid);
+            } else if (window.fire) window.fire('onllkey', keyid);
         });
         document.body.addEventListener('keyup', ev => {
             map.delete(ev.code);
@@ -125,6 +125,12 @@ Loading, please wait...<br/>
                 let base = { gid: responseGID, _cc: ev.data, verbose: localStorage.fuses.includes('[debug]') }
                 if (type == 'pledge') return pledges.push(file);
                 if (type == 'log') return log('rcm.2b', file);
+                if (type == 'ld.css') {
+                    let l = document.createElement('link');
+                    l.rel = 'stylesheet';
+                    l.href = file;
+                    document.body.appendChild(l);
+                }
                 if (type == 'sreboot') {
                     localStorage.removeItem('rcminfo');
                     location.reload();

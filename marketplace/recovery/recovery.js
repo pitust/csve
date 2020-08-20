@@ -78,6 +78,17 @@ function list(dir) { return wrapo({ type: 'list', file: dir }); }
                     await pledge(dir);
                     continue;
                 }
+                if (cmd.startsWith('ld.css ')) {
+                    let dir = null;
+                    if (cmd[7] == '/') {
+                        dir = cmd.slice(7);
+                    } else dir = cdir + '/' + cmd.slice(7);
+                    dir = dir.replace(/\/+/g, '/');
+                    for (let i = 0;i < 20;i++)dir = dir.replace(/\/[^\/]+\/\.\./g, '/');
+                    dir = dir.replace(/\/+/g, '/');
+                    wrapo({ type: 'ld.css', file: URL.createObjectURL(new Blob([await read(dir)])) });
+                    continue;
+                }
                 if (cmd.startsWith('cache ')) {
                     await wrapo({ type: 'cache', data: cmd.slice(6) });
                     continue;
@@ -159,6 +170,7 @@ function list(dir) { return wrapo({ type: 'list', file: dir }); }
                 log('Unknown command: ' + cmd.split(' ')[0]);
             } catch(e) {
                 log('error: ' + (e && e.stack || e));
+                console.error(e);
             }
         }
     } else {
