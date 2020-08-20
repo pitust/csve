@@ -1,0 +1,195 @@
+<!--
+    CSVe RCM
+    Copyright (C) 2020  Piotr Stelmaszek
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>. -->
+<div data-owner="marketplace.0.1.1" data-id="loading">
+Loading, please wait...<br/>
+<code id="log">
+[csve] Loading...</code>
+<script>
+    (() => {
+        if (localStorage.fuses.includes('[norcm]') && !localStorage.fuses.includes('[debug]') && !localStorage.rcminfo) document.getElementById('log').style.display = 'none';
+        window.globalThis = window;        
+        let stime = Date.now();
+        let logs = [];
+        if (!localStorage.fuses) localStorage.setItem('fuses', '[norcm][config][noreval]');
+        if (!localStorage.fuses.includes('[norcm]') && !localStorage.rcminfo) localStorage.rcminfo = '1';
+        function hscroll() {
+            while ([...document.getElementById('log').getClientRects()].map(e => e.height).reduce((e, f) => e + f, 0) + 100 > innerHeight) {
+                document.getElementById('log').innerText = document.getElementById('log').innerText.split('\n').slice(1).join('\n')
+            }
+        }
+        globalThis.log = (md, mi, ctime = ((Date.now() - stime) / 1000).toString().padEnd(6, '0')) => {
+            hscroll();
+            logs.push(`[${ctime}] [${md}] ${mi}`)
+            document.getElementById('log').innerText += '\n' + `[${ctime}] [${md}] ${mi}`;
+            console.log(`[${ctime}] [${md}] ${mi}`);
+            return ctime;
+        }
+        let propromptEL = null;
+        let map = new Set();
+        document.body.addEventListener('keydown', ev => {
+            map.add(ev.code);
+            let keyid = [...map].sort().join('+');
+            if (map.has('ShiftRight') && map.has('End')) return void (map = new Set());
+            console.log(keyid);
+            if (keyid == 'Delete+Escape+ShiftLeft') {
+                localStorage.setItem('rcminfo', '1');
+                localStorage.setItem('logs2dumpinrcm', logs.join('\n'));
+                location.reload();
+            }
+            if ([...map].length == 1 && (ev.key.length == 1 || keyid == 'Enter' || keyid == 'Backspace')) {
+                if (document.hasFocus() && propromptEL) {
+                    propromptEL(keyid == 'Enter' ? '\n' : (keyid == 'Backspace' ? '\b' : ev.key));
+                    map.delete(ev.code);
+                    ev.preventDefault();
+                }
+            }
+        });
+        document.body.addEventListener('keyup', ev => {
+            map.delete(ev.code);
+        });
+        document.body.addEventListener('focus', ev => {
+            console.log('focus: ', ev.target);
+        });
+        window.proprompt = async (who, prompt, isOneLetter) => {
+            let ct = log(who, prompt + '\u25ae');
+            let inp = '';
+            return new Promise((res) => {
+                propromptEL = key => {
+                    console.log(key);
+                    if (key == '\b') inp = inp.slice(0, -1);
+                    else if (key == '\n') { res(inp); propromptEL = null; }
+                    else if (isOneLetter) { res(key); inp += key; propromptEL = null; }
+                    else inp += key;
+                    document.getElementById('log').innerText = document.getElementById('log').innerText.split('\n').slice(0, -1).join('\n');
+                    log(who, prompt + ' ' + inp + (propromptEL ? '\u25ae' : ''), ct);
+                }
+            })
+        }
+        if (localStorage.rcminfo == '1') {
+            log('rcm.1', 'RCM detected!');
+            let f = URL.createObjectURL(new Blob([localStorage.logs2dumpinrcm], {type:'application/octect-stream'}))
+            location.href = f;
+            log('rcm.1', 'Previous logs dumped');
+            // We need to evict the caches for core & marketplace.
+            let data = [];
+            for (let i = 0;i < localStorage.length;i++) {
+                let e = localStorage.key(i);
+                data.push(e);
+            }
+            for (let e of data) {
+                // Any main-thread virus could use non-vfs LS entries to keep its data RCM-proof and we don't want that.
+                // Also evict cache for core and marketplace so that all viruses using core or marketplace for persistence are out.
+                if (!e.startsWith('vfs__') && e != 'fuses') {
+                    log('rcm.1 evictor', `Evicted non-vfs LS entry ${e}`);
+                    localStorage.removeItem(e);
+                } else if (e.startsWith('vfs__core')) {
+                    log('rmc.1 evictor', `Evicted cache file ${e}`)
+                    localStorage.removeItem(e);
+                } else if (e.startsWith('vfs__marketplace') && e != 'vfs__marketplace/plist') {
+                    log('rmc.1 evictor', `Evicted cache file ${e}`)
+                    localStorage.removeItem(e);
+                } else log('rcm.1 evictor', 'Meh to ' + e);
+            }
+            if (navigator.serviceWorker.controller) {
+                log('rcm.1 evictor', 'Oh fuck... we have a SW; that should _never_ happen');
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                })
+            }
+            log('rcm.1', 'Reloading into rcm.2 (so we are _sure_ all hacks are out)');
+            localStorage.setItem('rcminfo', '2');
+            if (localStorage.fuses.includes('[debug]')) {
+                log('rcm.1', 'Won\'t autoreload because we have [debug] fuse set.')
+            } else location.reload();
+        } else if (localStorage.rcminfo == '2') {
+            let w = new Worker('/marketplace/recovery/recovery.js');
+            let pledges = [];
+            w.onmessage = async (ev) => {
+                let { data: { type, file, responseGID, data } } = ev;
+                let base = { gid: responseGID, _cc: ev.data, verbose: localStorage.fuses.includes('[debug]') }
+                if (type == 'pledge') return pledges.push(file);
+                if (type == 'log') return log('rcm.2b', file);
+                if (type == 'sreboot') {
+                    localStorage.removeItem('rcminfo');
+                    location.reload();
+                }
+                if (type == 'blow-fuse') {
+                    localStorage.setItem('fuses', localStorage.fuses.replace('[' + data + ']', ''));
+                }
+                if (type == 'rearm-fuses') {
+                    localStorage.setItem('fuses', '[devel][noprotect][noreval][norcm]')
+                }
+                if (type == 'arm-fuse') {
+                    localStorage.setItem('fuses', localStorage.fuses.replace('[' + data + ']', ''));
+                    localStorage.setItem('fuses', localStorage.fuses += `[${data}]`);
+                }
+                if (type == 'cache') {
+                    let r = await fetch(`/marketplace/${data}/defaultver/files.json`);
+                    let fls = await r.json();
+                    for (let f of fls)
+                        localStorage.setItem('vfs__' + data + '/' + f, await (await fetch(`/marketplace/${data}/defaultver/${f}`)).text());
+                        
+                    return w.postMessage({ data: 'ack', ...base });
+                }
+                if (type == 'list-fuses') {
+                    return w.postMessage({ data: localStorage.fuses.replace(/\[/g, '').replace(/\]/g, ',').slice(0, -1).split(','), ...base });
+                }
+                if (type == 'proprompt') return proprompt('rcm.2b', file.slice(1), file[0] == '1').then(r => w.postMessage({ data: r, isok: true, ...base })); 
+                if (pledges.find(e => file.startsWith(e))) return w.postMessage({  err: 'Pledged to ' + pledges.find(e => file.startsWith(e)), ...base });
+                if (type == 'read') {
+                    if (!localStorage.getItem('vfs__' + file.slice(1)))
+                        return w.postMessage({ err: 'ENOENT: file not exist: ' + file, ...base });
+                    return w.postMessage({  data: localStorage.getItem('vfs__' + file.slice(1)),...base });
+                }
+                if (type == 'write') return w.postMessage({ isok: (localStorage.setItem('vfs__' + file.slice(1), data), true), ...base });
+                if (type == 'list') {
+                    let o = [];
+                    for (let i = 0;i < localStorage.length;i++) {
+                        let e = localStorage.key(i);
+                        if (e.startsWith('vfs__' + file.slice(1))) o.push(e);
+                    }
+                    return w.postMessage({ data: o, ...base});
+                }
+                if (type == 'proceed') {
+                    w.terminate();
+                    let st = document.createElement('script');
+                    st.src = '/marketplace/marketplace/defaultver/bootstrap.js';
+                    document.body.appendChild(st);
+                }
+            }
+        } else {
+            log('csve', 'Loading...');
+            if (navigator.serviceWorker.controller) {
+                log('csve', 'Oh fuck... we have a SW; RECOVER NOW!!!');
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                })
+                alert('Service worker was detected\n PLEASE RECOVER!!!\nThis should never happen if you are using stock CSVe')
+            }
+            let st = document.createElement('script');
+            st.src = '/marketplace/marketplace/defaultver/bootstrap.js';
+            document.body.appendChild(st);
+        }
+    })();
+</script>
+<script src="fpsmeter.min.js"></script>
+</div>
+<div class="mlauncher">
