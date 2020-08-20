@@ -35,10 +35,10 @@ this.invoke = ({ name, args }) => {
     await this.invoke({ name: 'reval', args:`(()=>{
     let evs = [];
     globalThis.events = evs;
-    this.fire = (eventId, data) => { evs.push([Date.now(), eventId, data]) } 
+    this.fire = (eventId, data) => { console.log(eventId, data); evs.push([Date.now(), eventId, data]) } 
     Core.gxpose('epoll/start', () => evs.length);
     Core.gxpose('epoll/poll', ({ off }) => {
-        if (off < evs.length) return evs[off];
+        if (off < evs.length) return { type: evs[off][1], data: evs[off][2] };
         return new Promise((res) => {
             let id = setInterval(() => {
                 if (off < evs.length) {
@@ -53,7 +53,7 @@ this.invoke = ({ name, args }) => {
         for (let j = 0;j < old;j++) delete evs[j];
         old = evs.length;
     }, 500);
-    Core.gxpose('pshcsv', (a) => { fire('csvrenderrequest', a) });
+    Core.gxpose('pshcsv', (a) => { console.log(a); fire('csvrenderrequest', a) });
     Core.gxpose('fire', ({ e, v }) => { fire(e, v) });
     Core.gxpose('vfs/read', (file) => {
         try {
@@ -89,13 +89,17 @@ this.invoke = ({ name, args }) => {
         } catch (e) { return { result: e.message } }
         return { status: true };
     });
+    let sm = new Map();
+    Core.gxpose('getopt', async (c) => {
+        return sm.get(c.id).current;
+    });
+    Core.gxpose('mkdopt', async (c) => {
+        if (sm.has(c.id)) console.warn(\`The setting ${c.id} was re-declared for this session!\`);
+        sm.set(c.id, { current: c.dval, name: c.name, type: c.type })
+    });
     setTimeout(() => {
         Core.createCore('marketplace')
-        .run('marketplace @ v0.1.0  rt.js', BaseVFS.mkURIText(BaseVFS.read('marketplace/rt.js')), true).exposeEvent('reval', code => {
-            let s = document.createElement('script');
-            s.src = BaseVFS.mkURIText(code);
-            document.body.appendChild(s);
-        });
+        .run('marketplace @ v0.1.0  rt.js', BaseVFS.mkURIText(BaseVFS.read('marketplace/rt.js')), true).exposeFn('getsm', () => sm).exposeFn('setsm', (sm2) => void (sm = sm2));
     }, 500);
 })()`})
     

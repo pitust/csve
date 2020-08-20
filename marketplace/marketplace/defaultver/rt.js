@@ -30,12 +30,23 @@ Core.createCore('core')
     .exposeFn('csvrendered', info => {
         document.querySelector(info.to).innerHTML = info.text;
     });`);
-    setTimeout(() => {
-    handle('mlauncher-show-demo-here-alert', () => {
-        log('clickd')
-    })
-    Render.pushCSVTo('.mlauncher', 'mlauncher', { hasNameRow: false, hasTypeRow: false, cellBorders: false }, `,,
+    setTimeout(async () => {
+        let fid;
+        fid = await Render.pushCSVTo('.mlauncher', 'mlauncher', { hasNameRow: false, hasTypeRow: false, cellBorders: false }, `,,
 ROString,String,Inline
-Demo file,ch,Trigger|mlauncher-show-demo-here-alert|Open!`, []).then(log).catch(log)
-    }, 400);
-})().catch(log);
+Demo file,ch,Trigger|{{save}}|Save dis csv!`, [
+            {
+                type: 'save',
+                handle() {
+                    fire('request-code', { to: fid + 'savecallback' })
+                }
+            },
+            {
+                type: 'savecallback',
+                handle(csv) {
+                    log('CSV:\n' + csv);
+                }
+            },
+        ]);
+    }, 100);
+})()

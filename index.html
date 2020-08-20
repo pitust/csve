@@ -20,14 +20,14 @@ Loading, please wait...<br/>
 [csve] Loading...</code>
 <script>
     (() => {
+        if (!localStorage.fuses) localStorage.setItem('fuses', '[norcm][config][noreval]');
         if (localStorage.fuses.includes('[norcm]') && !localStorage.fuses.includes('[debug]') && !localStorage.rcminfo) document.getElementById('log').style.display = 'none';
         window.globalThis = window;        
         let stime = Date.now();
         let logs = [];
-        if (!localStorage.fuses) localStorage.setItem('fuses', '[norcm][config][noreval]');
         if (!localStorage.fuses.includes('[norcm]') && !localStorage.rcminfo) localStorage.rcminfo = '1';
         function hscroll() {
-            while ([...document.getElementById('log').getClientRects()].map(e => e.height).reduce((e, f) => e + f, 0) + 100 > innerHeight) {
+            while ([...document.getElementById('log').getClientRects()].length > ~~((innerHeight - 200) / 15)) {
                 document.getElementById('log').innerText = document.getElementById('log').innerText.split('\n').slice(1).join('\n')
             }
         }
@@ -42,6 +42,7 @@ Loading, please wait...<br/>
         let map = new Set();
         document.body.addEventListener('keydown', ev => {
             map.add(ev.code);
+            if (!ev.altKey) map.delete('AltLeft');
             let keyid = [...map].sort().join('+');
             if (map.has('ShiftRight') && map.has('End')) return void (map = new Set());
             console.log(keyid);

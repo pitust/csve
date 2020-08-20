@@ -81,8 +81,8 @@ try {
             let splt = csvcur.split('\n');
             let lp = hline(splt[x], 'for-mod');
             lp[y] = text;
-            splt[y] = lp.map(e => `${JSON.stringify(e).replace(/\\\\/g, '\\')}`).join(',');
-            csvcur = split.join('\n');
+            splt[x] = lp.map(e => `${JSON.stringify(e).replace(/\\\\/g, '\\')}`).join(',');
+            csvcur = splt.join('\n');
         } catch(e) {
             console.log(e);
         }

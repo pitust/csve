@@ -58,9 +58,15 @@ function list(dir) { return wrapo({ type: 'list', file: dir }); }
         let cdir = '/';
         log('Entering resh');
         let fusestt = [];
+        let plg = [];
+        try {
+            plg = (await read('/autoloads')).split('\n')
+        } catch {}
         while (true) {
             try {
-                let cmd = (await proprompt(false, 'resh ' + cdir + '$ ') || "");
+                let echo = !!plg.length;
+                let cmd = plg.shift() || (await proprompt(false, 'resh ' + cdir + '$ ') || "");
+                if (echo) log('resh ' + cdir + '$ ' + cmd);
                 cmd = cmd.split('#')[0].trim();
                 if (cmd == 'sreboot') { sreboot(); break; }
                 if (cmd == 'ls') {
@@ -94,7 +100,7 @@ function list(dir) { return wrapo({ type: 'list', file: dir }); }
                     continue;
                 }
                 if (cmd == 'proceed') {
-                    log('rcm.2', 'Proceeding');
+                    log('Proceeding');
                     wrapo({ type: 'proceed' });
                     break;
                 }
@@ -177,7 +183,7 @@ function list(dir) { return wrapo({ type: 'list', file: dir }); }
         log('Invalid answer: ' + JSON.stringify(r));
         sreboot()
     }
-})().catch(e => log('error: ' + (e && e.stack || e) ));
+})();
 
 
 

@@ -37,7 +37,7 @@
         }
     }
     try {
-        BaseVFS.read('marketplace/stage2.js');
+        BaseVFS.read('marketplace/stage2.js'); if(localStorage.fuses.includes('[nocache]')) throw 'nocache on';
     } catch {
         log('marketplace @ v0.1.0  bootstrap.js', `Caching marketplace...`);
         await BaseVFS.cache('marketplace')

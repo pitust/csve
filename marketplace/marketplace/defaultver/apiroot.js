@@ -30,21 +30,21 @@
         sendEvent('invoke', { name, args, id });
         return new Promise((res) => r[id] = res);
     }
-    this.fire = (event, data) => invoke({ type: 'fire', args: { e: event, v: data } })
+    this.fire = (event, data) => invoke({ name: 'fire', args: { e: event, v: data } })
     this.Util = new (class Util {
         unwrap({ status, result }) {
             if (status) return result;
             throw new Error(result);
         }
     })();
-    this.BlowFuse = (name) => invoke({ type: 'blowfuse', args: { name } });
+    this.BlowFuse = (name) => invoke({ name: 'blowfuse', args: { name } })
     let tt = [];
     this.handle = (type, handle) => tt.push({ type, handle });
     async function eloop() {
         let off = await invoke({ name: 'epoll/start', args: {} });
         while (true) {
             let x = await invoke({ name: 'epoll/poll', args: { off } })
-            tt.filter(e => e.type == x.type).forEach(e => e.handle(x.data));
+            tt.filter(e => e.type == x.type).forEach(e => e.handle(x.data))
             off++;
         }
     }
@@ -52,11 +52,25 @@
     this.Render = new (class RenderAPI {
         async pushCSVTo(selector, id, cfg, csv, triggers) {
             let _id = gid();
+            
             tt.push(...triggers.map(e => ({ type: _id + e.type, handle: e.handle })));
-            Util.unwrap(await invoke({ name: 'pshcsv', args: { selector, id, elid: _id, cfg, csv, triggers } }));
+            log('boutto');
+            invoke({ name: 'pshcsv', args: { selector, id, elid: _id, cfg, csv: triggers.reduce((csvc, t) => csvc.replace(`{{${t.type}}}`, _id + t.type), csv) } })
+            return _id;
         }
     })();
     this.DefineTheme = (name, css) => invoke({ name:'dtheme', args: { name, css } })
+    this.Settings = new (class Settings {
+        mkopt(id, name, dval, type) {
+            return invoke({ name: 'mkopt', args: { name, type, id, dval } });
+        }
+        getopt(id) {
+            return invoke({ name: 'getopt', args: { id } })
+        }
+        handle(kid, evh) {
+            handle('keybind-' + kid, () => evh());
+        }
+    })();
     this.VFS = {
         async read(file) {
             return Util.unwrap(await invoke({ name: 'vfs/read', args: file }));

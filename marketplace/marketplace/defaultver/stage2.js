@@ -44,7 +44,7 @@
                     return Promise.resolve(this.hinvoke[name](args))
                         .then((e => {
                             this.worker.postMessage(`callbackE0(${JSON.stringify({ id, args: e })})`);
-                        }).bind(this)).catch(console.error);
+                        }).bind(this))
                 }).bind(this))
         }
         exposeFn(id, fn) {
@@ -95,3 +95,10 @@
             document.body.appendChild(s);
         }).exposeFn('reval', eval.bind(this));
 });
+window.ccell = (cell, x, y) => {
+    fire('push-change', [cell.classList.has('on-true').toString().toUpperCase(), x, y]);
+    let enabled = cell.classList.has('on-true');
+    if (enabled) cell.classList.delete('on-true');
+    else cell.classList.delete('on-false');
+    cell.classList.add(`on-${!enabled}`);
+}
